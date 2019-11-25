@@ -11,34 +11,34 @@ int rightSensor = A0;
 int led  = 21; 
 //Move Car
 int motorAenable = 44;
-int motorBenable = 44;
+int motorBenable = 46;
 int motorApin0 = 53;
 int motorApin1 = 51;
 int motorBpin0 = 49;
 int motorBpin1 = 47;     
 char state;
-int vSpeed=50;
+int vSpeed=125;
 //WaterLevel
-int waterLevel = A12;
+int waterLevel = A15;
 //RainDrop
-int rainDrop = A8;
+int rainDrop = A14;
 //servo And JoyStick
 Servo servo_right; 
 Servo servo_left;   
 const int SW_pin = A5;
 const int X_pin = A7; 
 const int Y_pin = A6; 
-const int RightSe = 20;
+const int RightSe = 45;
 const int LeftSe = 2;
 //SeatBuilt
 int seatBuilt = 16;
 int seatBuiltConnected = 0; 
 //lcd             
 LiquidCrystal lcd(13,12,11,10,9,8); 
-String wear;
-String waterlevelString;
-String raining;
-String mirrorString="Open";
+String wear="        ";
+String waterlevelString="        ";
+String raining="        ";
+String mirrorString="        ";
 //MP3
 SoftwareSerial mySerial(4,3);
 # define Start_Byte 0x7E
@@ -55,6 +55,7 @@ int vol=24;
 boolean isPlaying = false;
 //common
 int Buzzer = 7;
+int BuzzerUsed = 0;
 
 // define Tasks
 //Cat 1 
@@ -69,6 +70,10 @@ void LCDDisplay( void *pvParameters);
 //Cat 3
 void MP3( void *pvParameters);
 
+
+TaskHandle_t xTask2Handle = NULL;
+
+SemaphoreHandle_t SoundSem = NULL;
 void setup() {
   ///pin assign
   //line follower
@@ -85,6 +90,7 @@ void setup() {
   pinMode(motorBpin1,OUTPUT);
   Serial3.begin(9600);
   Serial3.setTimeout(10);
+ // Serial.setTimeout(10);
   //WaterLevel
   pinMode(waterLevel,INPUT);
   //RainDrop
@@ -94,8 +100,9 @@ void setup() {
   digitalWrite(SW_pin, HIGH);
   servo_right.attach(RightSe);  
   servo_left.attach(LeftSe);
-  servo_right.write(90);          
+  servo_right.write(90);                
   servo_left.write(90); 
+  mirrorString = "Open";
   //SeatBuilt
   pinMode(seatBuilt,INPUT);
   digitalWrite(seatBuilt,HIGH);
@@ -113,7 +120,6 @@ void setup() {
   pinMode(buttonVolDec, INPUT);
   digitalWrite(buttonVolDec,HIGH);
   mySerial.begin (9600);
-  delay(1000);
   setVolume(vol);
   playFirst();
   isPlaying = true;
@@ -122,6 +128,8 @@ void setup() {
   digitalWrite(Buzzer,LOW);
   Serial.begin(9600);
   Serial.println("hi");
+
+  SoundSem = xSemaphoreCreateMutex();
   //create Tasks
   xTaskCreate (LineFollower, "LineFollower", 256, NULL, 1, NULL);
   xTaskCreate (MoveCar, "MoveCar", 256, NULL, 1,NULL);
@@ -129,8 +137,9 @@ void setup() {
   xTaskCreate (RainDrop, "RainDrop", 256, NULL, 1,NULL);
   xTaskCreate (ServoAndJoyStick, "ServoAndJoyStick", 256, NULL, 1, NULL);
   xTaskCreate (Seatbuilt, "Seatbuilt", 256, NULL, 1,NULL);
-  xTaskCreate (LCDDisplay, "LCDDisplay", 256, NULL, 1, NULL);
+  xTaskCreate (LCDDisplay, "LCDDisplay", 256, NULL, 1, &xTask2Handle);
   xTaskCreate (MP3, "LCDDisplay", 256, NULL, 1,NULL);
+  vTaskStartScheduler();
 }
 
 void loop() {
@@ -140,11 +149,12 @@ void loop() {
 void LineFollower (void *pvParameters) 
 {
   while (1) {
-      Serial.println("hi1");
+     // Serial.println("hi1");
 
       if(!digitalRead(leaftsensor) && !digitalRead(rightSensor))  
       {
-          digitalWrite(Buzzer,LOW);
+          if(BuzzerUsed != 1)
+            digitalWrite(Buzzer,LOW);
           digitalWrite(led,LOW);
       }
     
@@ -152,45 +162,46 @@ void LineFollower (void *pvParameters)
       {
           digitalWrite(Buzzer,HIGH);
           digitalWrite(led,HIGH); 
+          BuzzerUsed = 2;
       }
       
       if(!(digitalRead(leaftsensor)) && digitalRead(rightSensor)) 
       {
           digitalWrite(Buzzer,HIGH);
           digitalWrite(led,HIGH);  
+          BuzzerUsed = 2;
        }
       
       if(digitalRead(leaftsensor) && !(digitalRead(rightSensor)))  
       {
           digitalWrite(Buzzer,HIGH);
           digitalWrite(led,HIGH);  
+          BuzzerUsed = 2;
       }
-      delay(1000);
+      vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
   }
-}
-
+} 
 void MoveCar( void *pvParameters)  
 {
   while (1) {
-      Serial.println("hi2");
-
+      //Serial.println("hi2");
      if(Serial3.available()){
         state = Serial3.read();
         Serial.println(state);
       }
-      
+      int s = 0;
       switch(state){
-        case '0': vSpeed=10;break;
-        case '1': vSpeed=25;break;
-        case '2': vSpeed=51;break;
-        case '3': vSpeed=77;break;
-        case '4': vSpeed=102;break;
-        case '5': vSpeed=128;break;
-        case '6': vSpeed=153;break;
-        case '7': vSpeed=179;break;
-        case '8': vSpeed=204;break;
-        case '9': vSpeed=230;break;
-        case 'q': vSpeed=255;break;
+        case '0': vSpeed=10;s=1;break;
+        case '1': vSpeed=25;s=1;break;
+        case '2': vSpeed=51;s=1;break;
+        case '3': vSpeed=77;s=1;break;
+        case '4': vSpeed=102;s=1;break;
+        case '5': vSpeed=128;s=1;break;
+        case '6': vSpeed=153;s=1;break;
+        case '7': vSpeed=179;s=1;break;
+        case '8': vSpeed=204;s=1;break;
+        case '9': vSpeed=230;s=1;break;
+        case 'q': vSpeed=255;s=1;break;
         case 'F': digitalWrite(motorApin1,HIGH);
                   digitalWrite(49,HIGH);
                   break;
@@ -205,9 +216,13 @@ void MoveCar( void *pvParameters)
                   digitalWrite(motorBpin1,LOW);
                   break;
       }
-      analogWrite(44, vSpeed);
-      analogWrite(46, vSpeed);
-      delay(1000);
+      if(s==1){
+      analogWrite(motorAenable, vSpeed);
+      analogWrite(motorBenable, vSpeed);
+      }
+    //  Serial.println("hisss");
+      vTaskDelay ( pdMS_TO_TICKS( 10 ) ) ;
+      //delay(5);
   }
     
  }
@@ -215,21 +230,21 @@ void MoveCar( void *pvParameters)
 void WaterLevel( void *pvParameters) 
 {
   while (1) {
-      Serial.println("hi3");
+      //Serial.println("hi3");
 
      int waterlevelValue = analogRead(waterLevel); 
   
       if (waterlevelValue<=480){ 
         waterlevelString="0 mm"; 
-        lcd.clear();
+        //lcd.clear();
       }
       else if (waterlevelValue>480 && waterlevelValue<=530){ 
         waterlevelString="0-5 mm"; 
-        lcd.clear();
+        //lcd.clear();
       }
       else if (waterlevelValue>530 && waterlevelValue<=615){ 
         waterlevelString="5-10 mm"; 
-        lcd.clear();
+        //lcd.clear();
       }
       else if (waterlevelValue>615 && waterlevelValue<=660){ 
         waterlevelString="10-15 mm"; 
@@ -249,13 +264,14 @@ void WaterLevel( void *pvParameters)
       else if (waterlevelValue>705){ 
         waterlevelString="35-40 mm"; 
       }
-      delay(1000);
+      vTaskPrioritySet( xTask2Handle, 2 );
+      vTaskDelay ( pdMS_TO_TICKS( 2000 ) ) ;
    }
  }
  void RainDrop (void *pvParameters)
 {
   while (1) {
-       Serial.println("hi4");
+     //  Serial.println("hi4");
 
     int sensorReading = analogRead(rainDrop);
     int range = map(sensorReading, 0, 1024, 0, 3);
@@ -268,38 +284,42 @@ void WaterLevel( void *pvParameters)
         break;
       case 2:   
         raining="Clear";
-        lcd.clear();
+        //lcd.clear();
         break;
      }
-    delay(1000);
+     vTaskPrioritySet( xTask2Handle, 2 );
+      vTaskDelay ( pdMS_TO_TICKS( 2000 ) ) ;
   }
 }
 
 void ServoAndJoyStick( void *pvParameters) 
 {
   while (1) {
-      Serial.println("hi5");
+    int y =  analogRead(Y_pin);
+      Serial.println(y);
 
-     if(analogRead(Y_pin)>800)
+     if(y>800)
       {
         servo_right.write(90);                
         servo_left.write(90); 
         mirrorString = "Open";
       }
       
-      if(analogRead(Y_pin)<200)
+      if(y<200)
       {                                 
         servo_right.write(0);                
         servo_left.write(180); 
         mirrorString = "Close";
       }
-      delay(1000);
+      Serial.println(y);
+      vTaskPrioritySet( xTask2Handle, 2 );
+      vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
    }     
  }
  void Seatbuilt (void *pvParameters) 
 {
   while (1) {
-      Serial.println("hi6");
+     // Serial.println("hi6");
 
     if(digitalRead(seatBuilt)==LOW)
      {
@@ -311,23 +331,26 @@ void ServoAndJoyStick( void *pvParameters)
       if(seatBuiltConnected==0)
       {
         digitalWrite(Buzzer,HIGH);
+        BuzzerUsed = 1;
         wear = "Not Wear";
       }
       else
       { 
-        digitalWrite(Buzzer,LOW);
+        if(BuzzerUsed != 2)
+          digitalWrite(Buzzer,LOW);
         wear = "Wear";
-        lcd.clear();
+        //lcd.clear();
       } 
-       delay(1000);
+      vTaskPrioritySet( xTask2Handle, 2 );
+      vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
    }
 }
 
 void LCDDisplay( void *pvParameters)
 {
   while (1) {
-      Serial.println("hi7");
-
+    lcd.clear();
+    Serial.println("hi7");
     lcd.setCursor(0,0); 
     lcd.print(wear);
     lcd.setCursor(0,1); 
@@ -336,14 +359,15 @@ void LCDDisplay( void *pvParameters)
     lcd.print(raining); 
     lcd.setCursor(9,1); 
     lcd.print(mirrorString); 
-    delay(1000);
+    //vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
+    vTaskPrioritySet( xTask2Handle, 0 );
   }
     
  }
  void MP3 (void *pvParameters) 
 {
   while (1) {
-      Serial.println("hi8");
+     // Serial.println("hi8");
 
      if (digitalRead(buttonVolInc) == LOW)
       {
@@ -387,7 +411,7 @@ void LCDDisplay( void *pvParameters)
           playPrevious();
         }
       }
-    delay(1000);
+      vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
   }
 }
 
