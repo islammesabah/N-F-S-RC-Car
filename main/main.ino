@@ -130,6 +130,8 @@ void setup() {
   Serial.println("hi");
 
   SoundSem = xSemaphoreCreateMutex();
+  if ( ( SoundSem ) != NULL )
+     xSemaphoreGive( SoundSem );
   //create Tasks
   xTaskCreate (LineFollower, "LineFollower", 256, NULL, 1, NULL);
   xTaskCreate (MoveCar, "MoveCar", 256, NULL, 1,NULL);
@@ -178,7 +180,7 @@ void LineFollower (void *pvParameters)
           digitalWrite(led,HIGH);  
           BuzzerUsed = 2;
       }
-      vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
+      vTaskDelay ( pdMS_TO_TICKS( 10 ) ) ;
   }
 } 
 void MoveCar( void *pvParameters)  
@@ -371,7 +373,7 @@ void LCDDisplay( void *pvParameters)
 
      if (digitalRead(buttonVolInc) == LOW)
       {
-        if(vol<48){
+        if(vol<42){
           vol=vol+5;
           setVolume(vol);
         }
@@ -379,7 +381,7 @@ void LCDDisplay( void *pvParameters)
 
      if (digitalRead(buttonVolDec) == LOW)
        {
-        if(vol>0){
+        if(vol>5){
           vol=vol-5;
           setVolume(vol);
         }
@@ -391,27 +393,33 @@ void LCDDisplay( void *pvParameters)
         {
           pause();
           isPlaying = false;
+          xSemaphoreTake( SoundSem, portMAX_DELAY);
         }else
         {
           isPlaying = true;
           play();
+          xSemaphoreGive(SoundSem);
         }
       }
      if (digitalRead(buttonNext) == LOW)
       {
         if(isPlaying)
         {
+          xSemaphoreTake( SoundSem, portMAX_DELAY);
           playNext();
+          xSemaphoreGive(SoundSem);
         }
       }
        if (digitalRead(buttonPrevious) == LOW)
       {
         if(isPlaying)
         {
+          xSemaphoreTake( SoundSem, portMAX_DELAY);
           playPrevious();
+          xSemaphoreGive(SoundSem);
         }
       }
-      vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
+      vTaskDelay ( pdMS_TO_TICKS( 500 ) ) ;
   }
 }
 
