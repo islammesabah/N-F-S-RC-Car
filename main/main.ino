@@ -30,9 +30,9 @@ const int X_pin = A7;
 const int Y_pin = A6; 
 const int RightSe = 45;
 const int LeftSe = 2;
-//SeatBuilt
-int seatBuilt = 16;
-int seatBuiltConnected = 0; 
+//SeatBelt
+int seatBelt = 16;
+int seatBeltConnected = 0; 
 //lcd             
 LiquidCrystal lcd(13,12,11,10,9,8); 
 String wear="        ";
@@ -65,7 +65,7 @@ void MoveCar( void *pvParameters);
 void WaterLevel( void *pvParameters); 
 void RainDrop( void *pvParameters);
 void ServoAndJoyStick( void *pvParameters); 
-void Seatbuilt( void *pvParameters);
+void Seatbelt( void *pvParameters);
 void LCDDisplay( void *pvParameters); 
 //Cat 3
 void MP3( void *pvParameters);
@@ -99,13 +99,13 @@ void setup() {
   pinMode(SW_pin, INPUT);
   digitalWrite(SW_pin, HIGH);
   servo_right.attach(RightSe);  
-  servo_left.attach(LeftSe);
+  servo_left.attach(Left4Se);
   servo_right.write(90);                
   servo_left.write(90); 
   mirrorString = "Open";
-  //SeatBuilt
-  pinMode(seatBuilt,INPUT);
-  digitalWrite(seatBuilt,HIGH);
+  //SeatBelt
+  pinMode(seatBelt,INPUT);
+  digitalWrite(seatBelt,HIGH);
   //lcd 
   lcd.begin(16,2);
   //MP3
@@ -138,7 +138,7 @@ void setup() {
   xTaskCreate (WaterLevel, "WaterLevel", 256, NULL, 1, NULL);
   xTaskCreate (RainDrop, "RainDrop", 256, NULL, 1,NULL);
   xTaskCreate (ServoAndJoyStick, "ServoAndJoyStick", 256, NULL, 1, NULL);
-  xTaskCreate (Seatbuilt, "Seatbuilt", 256, NULL, 1,NULL);
+  xTaskCreate (Seatbelt, "Seatbelt", 256, NULL, 1,NULL);
   xTaskCreate (LCDDisplay, "LCDDisplay", 256, NULL, 1, &xTask2Handle);
   xTaskCreate (MP3, "LCDDisplay", 256, NULL, 1,NULL);
   vTaskStartScheduler();
@@ -318,19 +318,19 @@ void ServoAndJoyStick( void *pvParameters)
       vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
    }     
  }
- void Seatbuilt (void *pvParameters) 
+ void Seatbelt (void *pvParameters) 
 {
   while (1) {
      // Serial.println("hi6");
 
-    if(digitalRead(seatBuilt)==LOW)
+    if(digitalRead(seatBelt)==LOW)
      {
-      if(seatBuiltConnected==0)
-        seatBuiltConnected = 1;
+      if(seatBeltConnected==0)
+        seatBeltConnected = 1;
       else 
-        seatBuiltConnected = 0;
+        seatBeltConnected = 0;
      } 
-      if(seatBuiltConnected==0)
+      if(seatBeltConnected==0)
       {
         digitalWrite(Buzzer,HIGH);
         BuzzerUsed = 1;
