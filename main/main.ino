@@ -23,32 +23,30 @@ int waterLevel = A15;
 //RainDrop
 int rainDrop = A14;
 //servo And JoyStick
-Servo servo_right; 
-Servo servo_left;   
+Servo mirror;   
 const int SW_pin = A5;
 const int X_pin = A7; 
 const int Y_pin = A6; 
-const int RightSe = 45;
-const int LeftSe = 2;
+const int MirrorSe = 45;
 //SeatBelt
 int seatBelt = 16;
 int seatBeltConnected = 0; 
 //lcd             
-LiquidCrystal lcd(13,12,11,10,9,8); 
+LiquidCrystal lcd(13,12,6,5,9,8); 
 String wear="        ";
 String waterlevelString="        ";
 String raining="        ";
 String mirrorString="        ";
 //MP3
-SoftwareSerial mySerial(4,3);
+SoftwareSerial mySerial(10,11);
 # define Start_Byte 0x7E
 # define Version_Byte 0xFF
 # define Command_Length 0x06
 # define End_Byte 0xEF
 # define Acknowledge 0x00 
 int buttonNext = 17;
-int buttonVolInc=5;
-int buttonVolDec=6;
+int buttonVolInc=3;
+int buttonVolDec=4;
 int buttonPause = 18;
 int buttonPrevious = 19;    
 int vol=24;
@@ -70,10 +68,37 @@ void LCDDisplay( void *pvParameters);
 //Cat 3
 void MP3( void *pvParameters);
 
-
-TaskHandle_t xTask2Handle = NULL;
+TaskHandle_t xLCDHandle = NULL;
 
 SemaphoreHandle_t SoundSem = NULL;
+
+void execute_CMD(byte CMD, byte Par1, byte Par2)
+// Excecute the command and parameters
+{
+    // Calculate the checksum (2 bytes)
+    word checksum = -(Version_Byte + Command_Length + CMD + Acknowledge + Par1 + Par2);
+    // Build the command line
+    byte Command_line[10] = { Start_Byte, Version_Byte, Command_Length, CMD, Acknowledge,
+    Par1, Par2, highByte(checksum), lowByte(checksum), End_Byte};
+    //Send the command line to the module
+    for (byte k=0; k<10; k++)
+    {
+    mySerial.write( Command_line[k]);
+    }
+}
+
+
+void playFirst()
+{
+      Serial.println("pf");
+      execute_CMD(0x3F, 0, 0);
+      delay(500);
+      setVolume(10);
+      delay(500);
+      execute_CMD(0x11,0,1); 
+      delay(500);
+}
+
 void setup() {
   ///pin assign
   //line follower
@@ -98,10 +123,8 @@ void setup() {
   //servo And JoyStick
   pinMode(SW_pin, INPUT);
   digitalWrite(SW_pin, HIGH);
-  servo_right.attach(RightSe);  
-  servo_left.attach(Left4Se);
-  servo_right.write(90);                
-  servo_left.write(90); 
+  mirror.attach(MirrorSe);  
+  mirror.write(90); 
   mirrorString = "Open";
   //SeatBelt
   pinMode(seatBelt,INPUT);
@@ -121,12 +144,13 @@ void setup() {
   digitalWrite(buttonVolDec,HIGH);
   mySerial.begin (9600);
   setVolume(vol);
+  Serial.println("hi");
   playFirst();
   isPlaying = true;
+  Serial.begin(9600);
   //common
   pinMode(Buzzer, OUTPUT);
   digitalWrite(Buzzer,LOW);
-  Serial.begin(9600);
   Serial.println("hi");
 
   SoundSem = xSemaphoreCreateMutex();
@@ -139,7 +163,7 @@ void setup() {
   xTaskCreate (RainDrop, "RainDrop", 256, NULL, 1,NULL);
   xTaskCreate (ServoAndJoyStick, "ServoAndJoyStick", 256, NULL, 1, NULL);
   xTaskCreate (Seatbelt, "Seatbelt", 256, NULL, 1,NULL);
-  xTaskCreate (LCDDisplay, "LCDDisplay", 256, NULL, 1, &xTask2Handle);
+  xTaskCreate (LCDDisplay, "LCDDisplay", 256, NULL, 1, &xLCDHandle);
   xTaskCreate (MP3, "LCDDisplay", 256, NULL, 1,NULL);
   vTaskStartScheduler();
 }
@@ -189,7 +213,6 @@ void MoveCar( void *pvParameters)
       //Serial.println("hi2");
      if(Serial3.available()){
         state = Serial3.read();
-        Serial.println(state);
       }
       int s = 0;
       switch(state){
@@ -266,7 +289,7 @@ void WaterLevel( void *pvParameters)
       else if (waterlevelValue>705){ 
         waterlevelString="35-40 mm"; 
       }
-      vTaskPrioritySet( xTask2Handle, 2 );
+      vTaskPrioritySet( xLCDHandle, 2 );
       vTaskDelay ( pdMS_TO_TICKS( 2000 ) ) ;
    }
  }
@@ -289,7 +312,7 @@ void WaterLevel( void *pvParameters)
         //lcd.clear();
         break;
      }
-     vTaskPrioritySet( xTask2Handle, 2 );
+     vTaskPrioritySet( xLCDHandle, 2 );
       vTaskDelay ( pdMS_TO_TICKS( 2000 ) ) ;
   }
 }
@@ -298,23 +321,19 @@ void ServoAndJoyStick( void *pvParameters)
 {
   while (1) {
     int y =  analogRead(Y_pin);
-      Serial.println(y);
 
      if(y>800)
       {
-        servo_right.write(90);                
-        servo_left.write(90); 
+        mirror.write(90);                
         mirrorString = "Open";
       }
       
       if(y<200)
       {                                 
-        servo_right.write(0);                
-        servo_left.write(180); 
+        mirror.write(0);                
         mirrorString = "Close";
       }
-      Serial.println(y);
-      vTaskPrioritySet( xTask2Handle, 2 );
+      vTaskPrioritySet( xLCDHandle, 2 );
       vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
    }     
  }
@@ -343,7 +362,7 @@ void ServoAndJoyStick( void *pvParameters)
         wear = "Wear";
         //lcd.clear();
       } 
-      vTaskPrioritySet( xTask2Handle, 2 );
+      vTaskPrioritySet( xLCDHandle, 2 );
       vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
    }
 }
@@ -352,7 +371,7 @@ void LCDDisplay( void *pvParameters)
 {
   while (1) {
     lcd.clear();
-    Serial.println("hi7");
+
     lcd.setCursor(0,0); 
     lcd.print(wear);
     lcd.setCursor(0,1); 
@@ -362,10 +381,44 @@ void LCDDisplay( void *pvParameters)
     lcd.setCursor(9,1); 
     lcd.print(mirrorString); 
     //vTaskDelay ( pdMS_TO_TICKS( 1000 ) ) ;
-    vTaskPrioritySet( xTask2Handle, 0 );
+    vTaskPrioritySet( xLCDHandle, 0 );
   }
     
  }
+ //////////////////MP3 Functions
+  void setVolume(int volume)
+{
+      execute_CMD(0x06, 0, volume); // Set the volume (0x00~0x30)
+      delay(2000);
+          Serial.println("sv");
+}
+
+void pause()
+{
+      Serial.println("pa");
+      execute_CMD(0x0E,0,0);
+      delay(500);
+}
+void play()
+{
+      Serial.println("p");
+      execute_CMD(0x0D,0,1); 
+      delay(500);
+}
+void playNext()
+{
+      Serial.println("pn");
+      execute_CMD(0x01,0,1);
+      delay(500);
+}
+void playPrevious()
+{
+      Serial.println("pp");
+      execute_CMD(0x02,0,1);
+      delay(500);
+}
+
+
  void MP3 (void *pvParameters) 
 {
   while (1) {
@@ -419,58 +472,9 @@ void LCDDisplay( void *pvParameters)
           xSemaphoreGive(SoundSem);
         }
       }
-      vTaskDelay ( pdMS_TO_TICKS( 500 ) ) ;
+      vTaskDelay ( pdMS_TO_TICKS( 800 ) ) ;
   }
 }
 
 
-//////////////////MP3 Functions
-void playFirst()
-{
-      execute_CMD(0x3F, 0, 0);
-      delay(500);
-      setVolume(20);
-      delay(500);
-      execute_CMD(0x11,0,1); 
-      delay(500);
-}
-void pause()
-{
-      execute_CMD(0x0E,0,0);
-      delay(500);
-}
-void play()
-{
-      execute_CMD(0x0D,0,1); 
-      delay(500);
-}
-void playNext()
-{
-      execute_CMD(0x01,0,1);
-      delay(500);
-}
-void playPrevious()
-{
-      execute_CMD(0x02,0,1);
-      delay(500);
-}
-void setVolume(int volume)
-{
-      execute_CMD(0x06, 0, volume); // Set the volume (0x00~0x30)
-      delay(2000);
-}
-void execute_CMD(byte CMD, byte Par1, byte Par2)
-// Excecute the command and parameters
-{
-    // Calculate the checksum (2 bytes)
-    word checksum = -(Version_Byte + Command_Length + CMD + Acknowledge + Par1 + Par2);
-    // Build the command line
-    byte Command_line[10] = { Start_Byte, Version_Byte, Command_Length, CMD, Acknowledge,
-    Par1, Par2, highByte(checksum), lowByte(checksum), End_Byte};
-    //Send the command line to the module
-    for (byte k=0; k<10; k++)
-    {
-    mySerial.write( Command_line[k]);
-    }
-}
 
