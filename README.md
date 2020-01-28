@@ -103,30 +103,27 @@ We divide our tasks into eight tasks:
 
 | # | Name | Priority | Delay | Usage | Note |
 | - | -| -| - | - | - |
-| 1 LineFollower | 1 | 10ms | Reads line follower sensor input and warns the user. | - |
-| 2 MoveCar | 1 | 10ms | Reads from Bluetooth module and moves the car. | - |
-| 3 WaterLevel | 1 | 2000ms | Reads fuel level and redisplays on the LCD. | - |
-| 4 RainDrop | 1 | 2000ms | Reads when it rains and redisplays on the LCD. | - |
-| 5 ServoAndJoyStick | 1 | 1000ms | Take control of mirror and print its state on LCD. | - |
-| 6 Seatbelt | 1 | 1000ms | We Check if the seatbelt is connected and print its state on LCD. | - |
-| 7 LCDDisplay | 0 | -- | Displays current state on LCD. | At first the priority of LCD is 0, then when a tsk wants to use it, its priority reach maximum (2) to finish first, then go back to 0 again.|
+| 1 | LineFollower | 1 | 10ms | Reads line follower sensor input and warns the user. | - |
+| 2 | MoveCar | 1 | 10ms | Reads from Bluetooth module and moves the car. | - |
+| 3 | WaterLevel | 1 | 2000ms | Reads fuel level and redisplays on the LCD. | - |
+| 4 | RainDrop | 1 | 2000ms | Reads when it rains and redisplays on the LCD. | - |
+| 5 | ServoAndJoyStick | 1 | 1000ms | Take control of mirror and print its state on LCD. | - |
+| 6 | Seatbelt | 1 | 1000ms | We Check if the seatbelt is connected and print its state on LCD. | - |
+| 7 | LCDDisplay | 0 | -- | Displays current state on LCD. | At first the priority of LCD is 0, then when a tsk wants to use it, its priority reach maximum (2) to finish first, then go back to 0 again.|
 | 8 | MP3 | 1 | 800ms | Controls MP3 module.| - |
 
 ## ● Problems and Limitations:
 
 We faced some problems and limitations when we implemented our project. We collected them in the following points:
 
-  o The car’s physical structure was small; As a result, putting on a lot of
+  * The car’s physical structure was small; As a result, putting on a lot of
 components and connecting them was messy.
-
-  o As we used a lot of components, which in turn use a lot of power, we
+  * As we used a lot of components, which in turn use a lot of power, we
 couldn’t make all features work without connecting them with multi
 sources of power; indeed, we used 9V battery and voltage adapter.
-
-  o As we connected the DC Motor which moved the car with only 9v, it
+  * As we connected the DC Motor which moved the car with only 9v, it
 couldn’t handle different speeds so it moved only when we set it
 with high speed.
-
-  o There was some delay in the push button functionality when it is
+  * There was some delay in the push button functionality when it is
 triggered, this was the result of the scheduler waiting to finish the
 task before it.
